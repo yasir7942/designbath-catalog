@@ -34,6 +34,10 @@ const nextConfig = {
                 protocol: "https", 
             },
             {
+                hostname: "admin.designbath.pk",
+                protocol: "https", 
+            },
+            {
                 hostname: "localhost",
                 protocol: "http", 
             }

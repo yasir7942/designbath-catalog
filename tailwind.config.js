@@ -7,6 +7,18 @@ module.exports = {
   ],
   theme: {
     extend: {
+
+      keyframes: {
+        colorChange: {
+          '0%, 100%': { color: '#ffffff' },  // Start and end with red
+          '50%': { color: '#f87171' },       // Change to blue at the midpoint
+        },
+      },
+      animation: {
+        colorChange: 'colorChange 2s infinite',
+      },
+
+      
       backgroundImage: {
         "gradient-radial": "radial-gradient(var(--tw-gradient-stops))",
         "gradient-conic":

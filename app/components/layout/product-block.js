@@ -34,11 +34,20 @@ const ProductBlock = ({ product, pageNumber }) => {
  
      const isDiscounted = discountedPrice > 0;
 
+     
+      const productUrl= process.env.NEXT_PUBLIC_BASE_URL +'/product/'+product.slug;
+      const ProductTitle =   encodeURIComponent(product.name);
+
+
+
+     
 
     return (
         <div className="w-full h-auto  mb-5  border-4 border-gray-500">
           
-            <Image className='w-full ' src={getImageUrl(product.image.url)} width={1000} height={1000} alt={product.name} />
+         
+
+            <Image className='w-full' priority src={getImageUrl(product.image.url)} width={1000} height={1000} alt={product.name} />
             <div className="w-full h-[1px] mt-5   " />
 
             <div className="flex flex-col md:flex-row space-y-3 md:space-y-0 p-5  mt-2 justify-start items-center bg-slate-100">
@@ -47,6 +56,11 @@ const ProductBlock = ({ product, pageNumber }) => {
                     <div><strong>Model:</strong> {product.model}</div>
                     <div className="max-w-60"><strong>Product Details:</strong> <span className="font-light text-sm">{product.details}</span>  </div>
                     <div>
+                    <div><strong>Stock:</strong> <span
+                          className={`w-3 h-3 rounded-full mr-2 ${
+                            product.haveStock ? 'bg-green-500' : 'bg-orange-500'
+                          }`}
+                        ></span> </div>
                     <strong className={isDiscounted ? 'line-through' : ''}>List Price:</strong> 
                     <span className={isDiscounted ? 'line-through' : ''}>{product.price}/-</span>
                     </div>
@@ -80,6 +94,12 @@ const ProductBlock = ({ product, pageNumber }) => {
               </div>
               <div className="flex  flex-row justify-between items-center space-x-7 mt-3">
                    <ShareButton slug={product.slug} productName={product.name} price={product.price} discount={discountedPrice} />   <CopyButton copyData={product.slug} />
+              
+
+                   <a href={`https://api.whatsapp.com/send?phone=923246669988&text=${encodeURIComponent(ProductTitle)}%20${productUrl}`} target="_blank">  
+                        <Image   className="w-12 ml-3" src="/images/whatsapp-icon.png" width={200} height={200} alt={product.name} /> 
+                        </a>
+              
               </div>
 
             </div>

@@ -76,12 +76,18 @@ const ProductList = async ({params}) => {
 
   if (type === 'brand') {
     products = await getProudctListByBrand(slug);
+   
+
   } else if (type === 'filter') {
     products = await getProudctListByFilter(slug);
   } else {
     throw new Error("Invalid type. Must be 'brand' or 'Tags/Filters'.");
   }
 
+
+  //products.sort((a, b) => a.price - b.price);
+
+ 
    
  
      

@@ -17,7 +17,7 @@ export default function ShareButton({productName, price, discount, slug}) {
         await navigator.share({
           title: productName,
           text: text ,
-          url: process.env.NEXT_PUBLIC_BASE_URL +'/product/'+ slug,  
+          url: process.env.NEXT_PUBLIC_BASE_URL +'/product/'+ slug+'%0A',  
         });
       } catch (error) {
         console.error('Error sharing', error);

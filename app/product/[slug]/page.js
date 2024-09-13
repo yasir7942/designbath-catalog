@@ -95,6 +95,11 @@ const SingleProduct = async ({params}) => {
           getImageUrl(product.image.formats.thumbnail.url),  // medium
         ],
         "description": product.details,
+        "og:type": "website",
+         "og:title" : product.name,
+         "og:description":  product.details,
+        "og:image": getImageUrl(product.image.formats.thumbnail.url),
+          
         "brand": {
           "@type": "Brand",
           "name": product.brand.name

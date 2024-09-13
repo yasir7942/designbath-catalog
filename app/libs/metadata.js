@@ -15,6 +15,7 @@ export async function generateMetadata({  params }) {
   return {
     
     title: pageTitle,
+    
     description: pageDescription,
     
     openGraph: {
@@ -27,7 +28,10 @@ export async function generateMetadata({  params }) {
       ],
     },
     other: {
-      'og:type': "ImageObject",
+      'og:type': "website",
+         "og:title" : pageTitle,
+         "og:description":  pageDescription,
+        "og:image": image,
     },
   };
 }

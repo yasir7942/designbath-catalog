@@ -96,7 +96,7 @@ const ProductBlock = ({ product, pageNumber }) => {
                    <ShareButton slug={product.slug} productName={product.name} price={product.price} discount={discountedPrice} />   <CopyButton copyData={product.slug} />
               
 
-                   <a href={`https://api.whatsapp.com/send?phone=923246669988&text=${encodeURIComponent(ProductTitle)}%20${productUrl}`} target="_blank">  
+                   <a href={`https://api.whatsapp.com/send?phone=923246669988&text=*${ProductTitle}*%0AList Price-${product.price}%0ADiscounted Price- ${discountedPrice}%0A${productUrl}`} target="_blank">  
                         <Image   className="w-12 ml-3" src="/images/whatsapp-icon.png" width={200} height={200} alt={product.name} /> 
                         </a>
               

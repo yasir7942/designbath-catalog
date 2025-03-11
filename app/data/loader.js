@@ -1,8 +1,8 @@
 
- 
+
 import qs from 'qs';
 import { flattenAttributes } from '../libs/data-utils';
- 
+
 
 let baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
 let appMode = process.env.NEXT_PUBLIC_MODE;
@@ -37,10 +37,10 @@ export async function fetchData(path, filter) {
 
     const response = await fetch(url.href, authToken ? headers : {});
     const data = await response.json();
-     
-     
+
+
     const flattenedData = flattenAttributes(data);
-    
+
 
     // console.log(flattenedData)
 
@@ -51,27 +51,28 @@ export async function fetchData(path, filter) {
 }
 
 
- /***********************getAllBrandsList********************************** */
+/***********************getAllBrandsList********************************** */
 export async function getAllBrandsList() {
 
   const blogBlockQuery = qs.stringify({
-    filters: { 
+    filters: {
     },
-     sort: ['index', 'name'],
-     populate: ['logo'],
+    sort: ['index', 'name'],
+    populate: ['logo', 'products'],
   });
   return await fetchData("brands", blogBlockQuery);
 }
 
 
- /***********************getAllFilterList********************************** */
- export async function getAllFilterList() {
+
+/***********************getAllFilterList********************************** */
+export async function getAllFilterList() {
 
   const blogBlockQuery = qs.stringify({
-    filters: { 
+    filters: {
     },
     sort: ['index', 'name'],
-     populate: ['logo'],
+    populate: ['logo', 'products'],
 
   });
   return await fetchData("tags", blogBlockQuery);
@@ -79,7 +80,7 @@ export async function getAllBrandsList() {
 
 
 
-  /*********************getProudctListByBrand*************************** */
+/*********************getProudctListByBrand*************************** */
 export async function getProudctListByBrand(brandSlug) {
   const productBlockQuery = qs.stringify({
     filters: {
@@ -90,53 +91,53 @@ export async function getProudctListByBrand(brandSlug) {
       },
     },
     sort: ['price'],
-    populate: ['image','videoLinks','brand','tags'],
+    populate: ['image', 'videoLinks', 'brand', 'tags'],
     pagination: {
       pageSize: 1000,
       page: 1,
     },
   });
-     return await fetchData("products", productBlockQuery);
-  }
+  return await fetchData("products", productBlockQuery);
+}
 
 
 
-    /*********************getProudctListByFilter*************************** */
-  export async function getProudctListByFilter(TagSlug) {
-    const productBlockQuery = qs.stringify({
-      filters: {
-        tags: {
-          slug: {
-            $eq: TagSlug,
-          },
+/*********************getProudctListByFilter*************************** */
+export async function getProudctListByFilter(TagSlug) {
+  const productBlockQuery = qs.stringify({
+    filters: {
+      tags: {
+        slug: {
+          $eq: TagSlug,
         },
       },
-      sort: ['price'],
-      populate: ['image','videoLinks','brand','tags'],
-      pagination: {
-        pageSize: 1000,
-        page: 1,
-      },
-    });
-       return await fetchData("products", productBlockQuery);
-    }
+    },
+    sort: ['price'],
+    populate: ['image', 'videoLinks', 'brand', 'tags'],
+    pagination: {
+      pageSize: 1000,
+      page: 1,
+    },
+  });
+  return await fetchData("products", productBlockQuery);
+}
 
 
 
-  /*********************getSpecificBrand*************************** */
-  export async function getSpecificBrand(brandSlug) {
-    const brandBlockQuery = qs.stringify({
+/*********************getSpecificBrand*************************** */
+export async function getSpecificBrand(brandSlug) {
+  const brandBlockQuery = qs.stringify({
     filters: {
-          slug: {
-            $eq: brandSlug,
-          },
+      slug: {
+        $eq: brandSlug,
       },
-      populate: ['logo'],
-    });
-      return await fetchData("brands", brandBlockQuery);
-    }
+    },
+    populate: ['logo'],
+  });
+  return await fetchData("brands", brandBlockQuery);
+}
 
-  /*********************getSpecificFilter*************************** */
+/*********************getSpecificFilter*************************** */
 
 export async function getSpecificFilter(brandSlug) {
   const tagsBlockQuery = qs.stringify({
@@ -153,7 +154,7 @@ export async function getSpecificFilter(brandSlug) {
 
 
 
-  /*********************getAllBrandSlugs*************************** */
+/*********************getAllBrandSlugs*************************** */
 export async function getAllBrandSlugs() {
 
   const blogBlockQuery = qs.stringify({
@@ -164,38 +165,38 @@ export async function getAllBrandSlugs() {
   return await fetchData("brands", blogBlockQuery);
 }
 
-  /*********************getAllFiltersSlugs*************************** */
-  export async function getAllFiltersSlugs() {
+/*********************getAllFiltersSlugs*************************** */
+export async function getAllFiltersSlugs() {
 
-    const blogBlockQuery = qs.stringify({
-  
-      fields: "slug",
-  
-    });
-    return await fetchData("tags", blogBlockQuery);
-  }
+  const blogBlockQuery = qs.stringify({
+
+    fields: "slug",
+
+  });
+  return await fetchData("tags", blogBlockQuery);
+}
 
 
 
-    /*********************getSingleProduct*************************** */
-    export async function getSingleProduct(slug) {
-      const brandBlockQuery = qs.stringify({
-      filters: {
-            slug: {
-              $eq: slug,
-            },
-        },
-        populate: ['image','videoLinks','brand','tags'],
-      });
-        return await fetchData("products", brandBlockQuery);
-      }
+/*********************getSingleProduct*************************** */
+export async function getSingleProduct(slug) {
+  const brandBlockQuery = qs.stringify({
+    filters: {
+      slug: {
+        $eq: slug,
+      },
+    },
+    populate: ['image', 'videoLinks', 'brand', 'tags'],
+  });
+  return await fetchData("products", brandBlockQuery);
+}
 
 
 
 /*********************getAllProductSlugs*************************** */
 export async function getAllProductSlugs() {
 
-  const  BlockQuery = qs.stringify({
+  const BlockQuery = qs.stringify({
 
     fields: "slug",
 

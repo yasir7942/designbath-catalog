@@ -29,7 +29,7 @@ export default function ShareButton({productName, price, discount, slug}) {
 
   return (
     <div>
-      <button onClick={handleShare} className="px-4 py-2 bg-blue-500 text-white rounded">
+      <button onClick={handleShare} className="px-4 py-2 bg-blue-500 hover:bg-blue-700 text-white rounded">
         Share / Send
       </button>
     </div>

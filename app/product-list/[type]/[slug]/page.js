@@ -1,10 +1,9 @@
-import { getProudctListByBrand , getSpecificBrand, getSpecificFilter, 
-  getProudctListByFilter, getAllBrandSlugs, getAllFiltersSlugs} from "../../../data/loader";
+import {
+  getProudctListByBrand, getSpecificBrand, getSpecificFilter,
+  getProudctListByFilter, getAllBrandSlugs, getAllFiltersSlugs
+} from "../../../data/loader";
 import ProductBlock from "../../../components/layout/product-block";
 import { generateMetadata as generatePageMetadata } from "../../../libs/metadata";
-import { getImageUrl } from "../../../libs/helpers";
-
-
 
 
 
@@ -28,10 +27,10 @@ export const generateStaticParams = async () => {
       };
     });
 
-       // Combine both arrays of slugs
-     const combinedSlugs = [...brandSlugs, ...filterSlugs];
+    // Combine both arrays of slugs
+    const combinedSlugs = [...brandSlugs, ...filterSlugs];
 
-   console.log(combinedSlugs);
+    //console.log(combinedSlugs);
 
     return combinedSlugs || [];
   } catch (error) {
@@ -42,10 +41,10 @@ export const generateStaticParams = async () => {
 
 
 
- 
+
 export async function generateMetadata({ params }) {
   const { type, slug } = params;
-  let  pCategory;
+  let pCategory;
 
   if (type === 'brand') {
     pCategory = await getSpecificBrand(slug);
@@ -54,32 +53,35 @@ export async function generateMetadata({ params }) {
   } else {
     throw new Error("Invalid type. Must be 'brand' or 'Tags/Filters'.");
   }
-   const metadataParams = {
-     pageTitle: pCategory.data[0]?.name,
-     pageDescription: pCategory.data[0]?.details,
-     image: getImageUrl(pCategory.data[0]?.logo.url) ,
-   };
+  const metadataParams = {
+    pageTitle: pCategory.data[0]?.name,
+    pageDescription: pCategory.data[0]?.details,
+    image: pCategory.data[0]?.logo.url,
+  };
 
   //  console.dir(pCategory, { depth:null}); 
   // console.dir(metadataParams ); 
- 
-   return await generatePageMetadata({  params: metadataParams });
- }
- 
+
+  return await generatePageMetadata({ params: metadataParams });
+}
 
 
 
-const ProductList = async ({params}) => {
+
+const ProductList = async ({ params }) => {
   const { type, slug } = params;
 
   let products;
+  let listType = ""
 
   if (type === 'brand') {
     products = await getProudctListByBrand(slug);
-   
+    listType = "Brand: " + products.data[0]?.brand?.name;
+
 
   } else if (type === 'filter') {
     products = await getProudctListByFilter(slug);
+    listType = "Filter: " + products.data[0]?.tags?.data[0]?.name;
   } else {
     throw new Error("Invalid type. Must be 'brand' or 'Tags/Filters'.");
   }
@@ -87,21 +89,24 @@ const ProductList = async ({params}) => {
 
   //products.sort((a, b) => a.price - b.price);
 
- 
-   
- 
-     
-   //console.log("-----------------------product brands/filter--------------------------------------------------");
-   //   console.dir(products, { depth: null });
-  // console.log("---------------------------End-----------------------end-----------------------");
 
+
+
+  /*
+    console.log("-----------------------product brands/filter--------------------------------------------------");
+    console.dir(products, { depth: null });
+    console.log("---------------------------End-----------------------end-----------------------");
+  */
   return (
     <div>
 
-        {products.data.map((product, index) => (
-      
-             <ProductBlock key={product.id} product={product} pageNumber={index+1} />  
-       ))}  
+
+      <div className=" text-lg text-center font-bold py-2">{listType} </div>
+
+      {products.data.map((product, index) => (
+
+        <ProductBlock key={product.id} product={product} pageNumber={index + 1} />
+      ))}
 
     </div>
   )

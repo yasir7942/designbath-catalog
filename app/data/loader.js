@@ -137,6 +137,21 @@ export async function getSpecificBrand(brandSlug) {
   return await fetchData("brands", brandBlockQuery);
 }
 
+
+/*********************getProductBrandList*************************** */
+export async function getProductBrandList() {
+
+  const brandBlockQuery = qs.stringify({
+    filters: {
+    },
+    populate: ['products', 'products.image'],
+
+  });
+  return await fetchData("brands", brandBlockQuery);
+}
+
+
+
 /*********************getSpecificFilter*************************** */
 
 export async function getSpecificFilter(brandSlug) {

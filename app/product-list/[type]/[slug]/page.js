@@ -90,13 +90,13 @@ const ProductList = async ({ params }) => {
   //products.sort((a, b) => a.price - b.price);
 
 
+  console.log(slug);
 
 
-  /*
-    console.log("-----------------------product brands/filter--------------------------------------------------");
-    console.dir(products, { depth: null });
-    console.log("---------------------------End-----------------------end-----------------------");
-  */
+  console.log("-----------------------product brands/filter--------------------------------------------------");
+  console.dir(products, { depth: null });
+  console.log("---------------------------End-----------------------end-----------------------");
+
   return (
     <div>
 

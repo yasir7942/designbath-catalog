@@ -87,14 +87,14 @@ const SingleProduct = async ({ params }) => {
     "name": product.name,
     "image": product.image.url,
     "image": [
-      product.image.formats.thumbnail.url,  // large
-      product.image.formats.thumbnail.url,  // medium
+      product.image?.formats.thumbnail.url ? product.image?.formats.thumbnail.url : "",  // large
+      product.image?.formats.thumbnail.url ? product.image?.formats.thumbnail.url : "",  // medium
     ],
     "description": product.details,
     "og:type": "website",
     "og:title": product.name,
     "og:description": product.details,
-    "og:image": product.image.formats.thumbnail.url,
+    "og:image": product.image?.formats.thumbnail.url ? product.image?.formats.thumbnail.url : "",
 
     "brand": {
       "@type": "Brand",

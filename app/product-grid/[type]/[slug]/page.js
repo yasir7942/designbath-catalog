@@ -2,8 +2,9 @@ import {
   getProudctListByBrand, getSpecificBrand, getSpecificFilter,
   getProudctListByFilter, getAllBrandSlugs, getAllFiltersSlugs
 } from "../../../data/loader";
-import ProductBlock from "../../../components/layout/product-block";
+import ProductGridBlock from "../../../components/layout/ProductGridBlock";
 import { generateMetadata as generatePageMetadata } from "../../../libs/metadata";
+import Link from "next/link";
 
 
 
@@ -55,16 +56,16 @@ export async function generateMetadata(props) {
     throw new Error("Invalid type. Must be 'brand' or 'Tags/Filters'.");
   }
 
-  console.log("------------start------------")
+  //console.log("------------start------------")
   //console.dir(pCategory, { depth: null });
-  console.dir(pCategory.data[0]?.logo.url)
-  console.log("------------end------------")
+
+  //console.log("------------end------------")
 
 
   const metadataParams = {
     pageTitle: pCategory.data[0]?.name,
     pageDescription: pCategory.data[0]?.details,
-    image: pCategory.data[0]?.logo.url || "",
+    image: pCategory.data[0]?.logo?.url || "",
   };
 
   ;
@@ -75,27 +76,21 @@ export async function generateMetadata(props) {
 
 
 
-const ProductList = async props => {
+const ProductGrid = async props => {
   const params = await props.params;
   const { type, slug } = params;
 
   let products;
   let listType = ""
-
-
-  products = await getProudctListByFilter(slug);
-  console.log(products.data[0]);
-
-
-
+  let url = process.env.NEXT_PUBLIC_BASE_URL + '/product/';
 
   if (type === 'brand') {
     products = await getProudctListByBrand(slug);
     listType = "Brand: " + products.data[0]?.brand?.name;
 
+
   } else if (type === 'filter') {
     products = await getProudctListByFilter(slug);
-
     listType = "Filter: " + products.data[0]?.tags[0]?.name;
   } else {
     throw new Error("Invalid type. Must be 'brand' or 'Tags/Filters'.");
@@ -118,13 +113,17 @@ const ProductList = async props => {
 
       <div className=" text-lg text-center font-bold py-2">{listType} </div>
 
-      {products.data.map((product, index) => (
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 gap-3 px-0 mb-3">
+        {products.data.map((product, index) => (
+          <Link href={url + product.slug} key={product.id}>
+            <ProductGridBlock product={product} pageNumber={index + 1} />
+          </Link>
 
-        <ProductBlock key={product.id} product={product} pageNumber={index + 1} />
-      ))}
+        ))}
+      </div>
 
-    </div>
+    </div >
   )
 }
 
-export default ProductList
+export default ProductGrid

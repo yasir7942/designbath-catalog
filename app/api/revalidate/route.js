@@ -1,22 +1,78 @@
 import { revalidatePath } from 'next/cache'
-import {  NextResponse } from 'next/server'
+import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 
-export async function GET(request)
-{
 
-     const url = new URL(request.url);
-    const token = url.searchParams.get("token");
+const STRAPI_API_URL = process.env.NEXT_PUBLIC_ADMIN_BASE_URL + ""; // direct strapi api call
+const VALID_TOKEN = process.env.ADMIN_TOKEN;
 
-    if (!token || token !== process.env.ADMIN_TOKEN) {
-        return NextResponse.json({ error: "Not Authorized" }, { status: 404 });
-    }
-    
+const corsHeaders = {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization",
+};
 
-    revalidatePath('/', 'layout');
 
-    return NextResponse.json({
-        revalidated: true,
-        now: Date.now(),
-        message: 'Revalidated All Data',
-      })     
+// ✅ Handle OPTIONS request (Prevents 405 Error)
+export async function OPTIONS() {
+    return new Response(null, { status: 204, headers: corsHeaders });
 }
+
+
+
+export async function GET(req) {
+    try {
+        const { searchParams } = new URL(req.url);
+        const token = searchParams.get("token") || "No token provided";
+        const logMessage = `[${new Date().toISOString()}] Revalidate Manual - All Revalidate Done  \n`;
+
+
+
+        revalidatePath('/', 'layout');
+
+
+
+
+        return new Response(JSON.stringify({ message: "GET request received", token }), {
+            status: 200,
+            headers: { "Content-Type": "application/json", ...corsHeaders },
+        });
+    } catch (error) {
+        console.error("Error handling GET request:", error);
+        return new Response(JSON.stringify({ error: "Error handling GET request" }), {
+            status: 500,
+            headers: corsHeaders,
+        });
+    }
+}
+
+
+
+
+// ✅ Handle POST request
+export async function POST(req) {
+    try {
+
+        const { searchParams } = new URL(req.url);
+        const token = searchParams.get("token") || "No token provided";
+
+
+
+        revalidatePath('/', 'layout');
+
+
+
+
+        return new Response(JSON.stringify({ message: "POST request received", data: body }), {
+            status: 200,
+            headers: { "Content-Type": "application/json", ...corsHeaders },
+        });
+    } catch (error) {
+        console.error("Error handling POST request:", error);
+        return new Response(JSON.stringify({ error: "Error handling POST request" }), {
+            status: 500,
+            headers: corsHeaders,
+        });
+    }
+}
+

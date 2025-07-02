@@ -18,11 +18,14 @@ export async function fetchData(path, filter) {
   const headers =
   {
     method: "GET",
-    header: {
-      "Content-Type": "application-json",
-      cache: cacheSystem,
+    headers: {
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+      "Content-Type": "application/json",
+      "Strapi-Response-Format": "v4",
       Authorization: `Bearer ${authToken}`,
-    }
+    },
+    cache: cacheSystem,
 
   }
 

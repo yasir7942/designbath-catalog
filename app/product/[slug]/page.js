@@ -27,7 +27,8 @@ export const generateStaticParams = async () => {
 }
 
 
-export async function generateMetadata({ params }) {
+export async function generateMetadata(props) {
+  const params = await props.params;
 
 
   const productData = await cachedGeSingleProduct(params.slug);
@@ -47,7 +48,8 @@ export async function generateMetadata({ params }) {
 
 
 
-const SingleProduct = async ({ params }) => {
+const SingleProduct = async props => {
+  const params = await props.params;
 
 
   const productData = await cachedGeSingleProduct(params.slug);

@@ -46,9 +46,12 @@ const ProductBlock = ({ product, pageNumber }) => {
       <div className="flex flex-col justify-start items-center w-full md:w-3/4 xl:w-2/4 h-auto    mb-5  border-4 border-gray-500 ">
 
         {product.image?.url ? (
+
           <Image
-            className="w-full h-auto"
+            className="w-full h-auto select-none"
+            draggable={false}
             priority
+            quality={100}
             src={getImageUrl(product.image.url)}
             width={1000}
             height={1000}
@@ -110,7 +113,7 @@ const ProductBlock = ({ product, pageNumber }) => {
           <div className="flex items-center capitalize font-light text-base text-red-600">
             share this Product with other
           </div>
-          <div className="flex  flex-row justify-between items-center space-x-7 mt-3">
+          <div className="flex  flex-row justify-between items-center space-x-7 mt-3 ">
             <ShareButton slug={product.slug} productName={product.name} price={product.price} discount={discountedPrice} />   <CopyButton copyData={product.slug} />
 
 
@@ -121,11 +124,11 @@ const ProductBlock = ({ product, pageNumber }) => {
 
           </div>
           <div className="flex flex-col w-full">
-            {product.tags?.data.length > 0 && (
+            {product.tags?.length > 0 && (
               <>
                 <div className="text-sm font-bold">Related Products Links</div>
                 <div className="flex flex-row space-x-4 mt-4">
-                  {product.tags.data.map((tag) => (
+                  {product.tags.map((tag) => (
                     <a key={tag.id} href={`${filterUrl}${tag.slug}`}>
                       <button className="px-6 py-2 border border-gray-500 text-gray-900 rounded hover:bg-gray-900 hover:text-white">
                         {tag.name}

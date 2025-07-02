@@ -1,23 +1,36 @@
- 
- import { getImageUrl} from '../../libs/helpers'
-
- 
+import { getImageUrl } from '../../libs/helpers'
 import Image from 'next/image'
- 
 
-const CategoryBlock = ({ brand, type  }) => {
+const CategoryBlock = ({ brand, type }) => {
 
-   
+    let view = "product-list"
 
-    return (   
-        <a href={`/product-list/${type}/${brand.slug}`} >       
-            <div className='flex flex-col h-full pb-3  justify-between items-center border border-gray-500'>
-               <Image className='w-full ' src={getImageUrl(brand.logo.url)} width={300} height={300} alt={brand.name} />
-                <h2 className='pt-3 px-1 text-left md:text-center md:px-3 text-sm font-bold'>{brand.name}</h2>
-                <h3 className='text-sm px-1 md:px-3 text-pretty flex-grow'>{brand.details } {brand.slug}</h3>
+    if (brand.frontView && brand.frontView == "Grid")
+        view = "product-grid"
+
+
+    return (
+        <a href={`/${view}/${type}/${brand.slug}`} className="h-full">
+
+            <div className="flex flex-col h-full pb-3 justify-between items-center border border-gray-500">
+                {brand.logo?.url && (
+                    <Image
+                        className="w-full"
+                        src={getImageUrl(brand.logo.url)}
+                        width={300}
+                        height={300}
+                        alt={brand.name}
+                    />
+                )}
+                <h2 className="pt-3 px-1 text-left md:text-center md:px-3 text-sm font-bold">
+                    {brand.name}
+                </h2>
+                <h3 className="text-sm px-1 md:px-3 text-pretty flex-grow">
+                    {brand.details} {brand.slug}
+                </h3>
             </div>
         </a>
-    );
+    )
 }
 
-export default CategoryBlock;
+export default CategoryBlock

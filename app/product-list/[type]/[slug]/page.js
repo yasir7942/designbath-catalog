@@ -1,130 +1,67 @@
+import ProductListClient from "./ProductListClient";
 import {
-  getProudctListByBrand, getSpecificBrand, getSpecificFilter,
-  getProudctListByFilter, getAllBrandSlugs, getAllFiltersSlugs
+  getProudctListByBrand,
+  getProudctListByFilter,
 } from "../../../data/loader";
-import ProductBlock from "../../../components/layout/product-block";
-import { generateMetadata as generatePageMetadata } from "../../../libs/metadata";
+import { getImageUrl } from "../../../libs/helpers";
 
+// ✅ META
+export async function generateMetadata({ params }) {
+  const { type, slug } = await params;
 
-
-export const generateStaticParams = async () => {
   try {
+    let products = [];
 
-    const brandSlug = await getAllBrandSlugs();
-    const filterSlug = await getAllFiltersSlugs();
+    if (type === "brand") {
+      products = await getProudctListByBrand(slug);
+    } else {
+      products = await getProudctListByFilter(slug);
+    }
 
-    const brandSlugs = brandSlug?.data?.map((brand) => {
-      return {
-        type: 'brand',
-        slug: brand.slug
-      };
-    });
+    const firstProduct = products?.[0];
 
-    const filterSlugs = filterSlug?.data?.map((filter) => {
-      return {
-        type: 'filter',
-        slug: filter.slug
-      };
-    });
+    const title =
+      type === "brand"
+        ? `${firstProduct?.brand?.name || slug} Products | Design Bath`
+        : `${firstProduct?.tags?.[0]?.name || slug} Products | Design Bath`;
 
-    // Combine both arrays of slugs
-    const combinedSlugs = [...brandSlugs, ...filterSlugs];
+    const description = `Browse ${firstProduct?.brand?.name ||
+      firstProduct?.tags?.[0]?.name ||
+      slug
+      } products in Design Bath catalog.`;
 
-    //console.log(combinedSlugs);
+    const image = firstProduct?.image?.url
+      ? getImageUrl(firstProduct.image.url)
+      : "";
 
-    return combinedSlugs || [];
-  } catch (error) {
-    console.log("generateStaticParams Error:" + error);
-    throw new Error("Error Fetching generateStaticParams");
+    return {
+      title,
+      description,
+
+      openGraph: {
+        title,
+        description,
+        url: `/product-list/${type}/${slug}`,
+        images: image
+          ? [
+            {
+              url: image,
+              width: 1200,
+              height: 1200,
+            },
+          ]
+          : [],
+      },
+    };
+  } catch {
+    return {
+      title: "Design Bath Catalog",
+      description: "Browse products",
+    };
   }
 }
 
-
-
-
-export async function generateMetadata(props) {
-  const params = await props.params;
-  const { type, slug } = params;
-  let pCategory;
-
-  if (type === 'brand') {
-    pCategory = await getSpecificBrand(slug);
-  } else if (type === 'filter') {
-    pCategory = await getSpecificFilter(slug);
-  } else {
-    throw new Error("Invalid type. Must be 'brand' or 'Tags/Filters'.");
-  }
-
-  console.log("------------start------------")
-  //console.dir(pCategory, { depth: null });
-  console.dir(pCategory.data[0]?.logo.url)
-  console.log("------------end------------")
-
-
-  const metadataParams = {
-    pageTitle: pCategory.data[0]?.name,
-    pageDescription: pCategory.data[0]?.details,
-    image: pCategory.data[0]?.logo.url || "",
-  };
-
-  ;
-
-  return await generatePageMetadata({ params: metadataParams });
+// ✅ CLIENT UI
+export default function Page({ params }) {
+  return <ProductListClient params={params} />;
 }
-
-
-
-
-const ProductList = async props => {
-  const params = await props.params;
-  const { type, slug } = params;
-
-  let products;
-  let listType = ""
-
-
-  products = await getProudctListByFilter(slug);
-  console.log(products.data[0]);
-
-
-
-
-  if (type === 'brand') {
-    products = await getProudctListByBrand(slug);
-    listType = "Brand: " + products.data[0]?.brand?.name;
-
-  } else if (type === 'filter') {
-    products = await getProudctListByFilter(slug);
-
-    listType = "Filter: " + products.data[0]?.tags[0]?.name;
-  } else {
-    throw new Error("Invalid type. Must be 'brand' or 'Tags/Filters'.");
-  }
-
-
-  //products.sort((a, b) => a.price - b.price);
-
-
-  //console.log(products);
-  //console.log(listType);
-
-  console.log("-----------------------product brands/filter--------------------------------------------------");
-  //console.dir(products, { depth: null });
-  console.log("---------------------------End-----------------------end-----------------------");
-
-  return (
-    <div>
-
-
-      <div className=" text-lg text-center font-bold py-2">{listType} </div>
-
-      {products.data.map((product, index) => (
-
-        <ProductBlock key={product.id} product={product} pageNumber={index + 1} />
-      ))}
-
-    </div>
-  )
-}
-
-export default ProductList

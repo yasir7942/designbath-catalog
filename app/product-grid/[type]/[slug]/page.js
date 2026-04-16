@@ -1,129 +1,78 @@
+import ProductGridClient from "./ProductGridClient";
 import {
-  getProudctListByBrand, getSpecificBrand, getSpecificFilter,
-  getProudctListByFilter, getAllBrandSlugs, getAllFiltersSlugs
+  getProudctListByBrand,
+  getProudctListByFilter,
 } from "../../../data/loader";
-import ProductGridBlock from "../../../components/layout/ProductGridBlock";
-import { generateMetadata as generatePageMetadata } from "../../../libs/metadata";
-import Link from "next/link";
+import { getImageUrl } from "../../../libs/helpers";
 
+// ✅ META for WhatsApp preview
+export async function generateMetadata({ params }) {
+  const { type, slug } = await params;
 
-
-export const generateStaticParams = async () => {
   try {
+    let products = [];
 
-    const brandSlug = await getAllBrandSlugs();
-    const filterSlug = await getAllFiltersSlugs();
+    if (type === "brand") {
+      products = await getProudctListByBrand(slug);
+    } else if (type === "filter") {
+      products = await getProudctListByFilter(slug);
+    }
 
-    const brandSlugs = brandSlug?.data?.map((brand) => {
-      return {
-        type: 'brand',
-        slug: brand.slug
-      };
-    });
+    const firstProduct = products?.[0];
 
-    const filterSlugs = filterSlug?.data?.map((filter) => {
-      return {
-        type: 'filter',
-        slug: filter.slug
-      };
-    });
+    const title =
+      type === "brand"
+        ? `${firstProduct?.brand?.name || slug} Products | Design Bath`
+        : `${firstProduct?.tags?.[0]?.name || slug} Products | Design Bath`;
 
-    // Combine both arrays of slugs
-    const combinedSlugs = [...brandSlugs, ...filterSlugs];
+    const description = `Explore ${firstProduct?.brand?.name ||
+      firstProduct?.tags?.[0]?.name ||
+      slug
+      } products in Design Bath digital catalog.`;
 
-    //console.log(combinedSlugs);
+    const image = firstProduct?.image?.url
+      ? getImageUrl(firstProduct.image.url)
+      : "";
 
-    return combinedSlugs || [];
-  } catch (error) {
-    console.log("generateStaticParams Error:" + error);
-    throw new Error("Error Fetching generateStaticParams");
+    return {
+      title,
+      description,
+
+      openGraph: {
+        title,
+        description,
+        url: `/product-grid/${type}/${slug}`,
+        siteName: "Design Bath",
+        images: image
+          ? [
+            {
+              url: image,
+              width: 1200,
+              height: 1200,
+              alt: title,
+            },
+          ]
+          : [],
+      },
+
+      twitter: {
+        card: "summary_large_image",
+        title,
+        description,
+        images: image ? [image] : [],
+      },
+    };
+  } catch (err) {
+    console.error("Meta error:", err);
+
+    return {
+      title: "Design Bath Catalog",
+      description: "Browse our product catalog",
+    };
   }
 }
 
-
-
-
-export async function generateMetadata(props) {
-  const params = await props.params;
-  const { type, slug } = params;
-  let pCategory;
-
-  if (type === 'brand') {
-    pCategory = await getSpecificBrand(slug);
-  } else if (type === 'filter') {
-    pCategory = await getSpecificFilter(slug);
-  } else {
-    throw new Error("Invalid type. Must be 'brand' or 'Tags/Filters'.");
-  }
-
-  //console.log("------------start------------")
-  //console.dir(pCategory, { depth: null });
-
-  //console.log("------------end------------")
-
-
-  const metadataParams = {
-    pageTitle: pCategory.data[0]?.name,
-    pageDescription: pCategory.data[0]?.details,
-    image: pCategory.data[0]?.logo?.url || "",
-  };
-
-  ;
-
-  return await generatePageMetadata({ params: metadataParams });
+// ✅ CLIENT UI CALL
+export default function Page({ params }) {
+  return <ProductGridClient params={params} />;
 }
-
-
-
-
-const ProductGrid = async props => {
-  const params = await props.params;
-  const { type, slug } = params;
-
-  let products;
-  let listType = ""
-  let url = process.env.NEXT_PUBLIC_BASE_URL + '/product/';
-
-  if (type === 'brand') {
-    products = await getProudctListByBrand(slug);
-    listType = "Brand: " + products.data[0]?.brand?.name;
-
-
-  } else if (type === 'filter') {
-    products = await getProudctListByFilter(slug);
-    listType = "Filter: " + products.data[0]?.tags[0]?.name;
-  } else {
-    throw new Error("Invalid type. Must be 'brand' or 'Tags/Filters'.");
-  }
-
-
-  //products.sort((a, b) => a.price - b.price);
-
-
-  //console.log(products);
-  //console.log(listType);
-
-  console.log("-----------------------product brands/filter--------------------------------------------------");
-  //console.dir(products, { depth: null });
-  console.log("---------------------------End-----------------------end-----------------------");
-
-  return (
-    <div>
-
-
-      <div className=" text-lg text-center font-bold py-2">{listType} </div>
-
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 gap-3 px-0 mb-3">
-        {products.data.map((product, index) => (
-          <Link href={url + product.slug} key={product.id}>
-            <ProductGridBlock product={product} pageNumber={index + 1} />
-          </Link>
-
-        ))}
-      </div>
-
-    </div >
-  )
-}
-
-export default ProductGrid

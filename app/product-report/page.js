@@ -1,24 +1,15 @@
-
-
-import Image from "next/image";
-
-
-
+import ProductReportClient from "./ProductReportClient";
 import { generateMetadata as generatePageMetadata } from "../libs/metadata";
-import ReadProductReport from "../components/layout/product-report";
 
-
-
-
-export async function generateMetadata(props) {
-  const params = await props.params;
-
+export async function generateMetadata() {
   const metadataParams = {
     pageTitle: "Product Report",
     pageSlug: "product-report",
-    pageDescription: "product Report Page",
+    pageDescription:
+      "Browse all products on one page with search, grouped by brand and category.",
     seoTitle: "Product Report",
-    seoDescription: "Product Report",
+    seoDescription:
+      "Browse all products on one page with search, grouped by brand and category.",
     rebotStatus: true,
     canonicalLinks: "product-report",
     dataPublishedTime: "",
@@ -28,30 +19,15 @@ export async function generateMetadata(props) {
     imageExt: "",
   };
 
-  return await generatePageMetadata({ type: "page", path: "", params: metadataParams });
+  return await generatePageMetadata({
+    type: "page",
+    path: "",
+    params: metadataParams,
+  });
 }
-
-
-
-
 
 const ProductReport = () => {
-  return (
-    <div className="mt-5 bg-white w-full h-auto p-5">
+  return <ProductReportClient />;
+};
 
-
-
-      <h1 className="text-2xl font-semibold text-center ">Product Report <span className="font-light block text-base font-serif">(Use Desktop Browser)</span></h1>
-      <h2 className="text-md font-light text-center pb-5">Product Data Analysis on one Page</h2>
-
-      <ReadProductReport />
-
-
-    </div>
-
-
-
-  )
-}
-
-export default ProductReport
+export default ProductReport;

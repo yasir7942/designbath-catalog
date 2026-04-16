@@ -17,7 +17,7 @@ const ProductBlock = ({ product, pageNumber }) => {
 
   }
   else if (!product.useBrandDiscount && product.salePrice !== null && product.salePrice !== '') {
-    if (IsFixValueDiscount) {
+    if (product.IsFixValueDiscount) {
       discountedPrice = Number(product.price) - Number(product.salePrice)
     }
     else {
@@ -34,7 +34,7 @@ const ProductBlock = ({ product, pageNumber }) => {
   const productUrl = process.env.NEXT_PUBLIC_BASE_URL + '/product/' + product.slug;
   const ProductTitle = encodeURIComponent(product.name);
 
-  const filterUrl = process.env.NEXT_PUBLIC_BASE_URL + '/product-list/filter/'
+  const filterUrl = process.env.NEXT_PUBLIC_BASE_URL + '/product-grid/filter/'
 
 
 
@@ -82,7 +82,7 @@ const ProductBlock = ({ product, pageNumber }) => {
 
 
 
-              <strong className={isDiscounted ? 'line-through' : ''}>List Price:</strong>
+              <strong className={isDiscounted ? 'line-through' : ''}>Price:</strong>
               <span className={isDiscounted ? 'line-through' : ''}>{product.price}/-</span>
             </div>
             <div className={isDiscounted ? '' : 'hidden'}><strong>Discounted Price:</strong> {discountedPrice > 0 ? `${discountedPrice}/-` : 'N/A'}</div>

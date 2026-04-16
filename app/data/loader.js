@@ -54,6 +54,132 @@ export async function fetchData(path, filter) {
 }
 
 
+
+/*********************** getProductMenuData ********************************** */
+export async function getProductMenuData() {
+  const [brandsRes, tagsRes, products] = await Promise.all([
+    getAllBrandsList(),
+    getAllFilterList(),
+    getAllProductsForMenu(),
+  ]);
+
+  const brands = Array.isArray(brandsRes?.data) ? brandsRes.data : [];
+  const tags = Array.isArray(tagsRes?.data) ? tagsRes.data : [];
+  const allProducts = Array.isArray(products) ? products : [];
+
+  const tagMap = new Map();
+  tags.forEach((tag) => {
+    if (tag?.id) {
+      tagMap.set(tag.id, tag);
+    }
+  });
+
+  const brandTagMap = new Map();
+
+  allProducts.forEach((product) => {
+    const brandId = product?.brand?.id;
+    const productTags = Array.isArray(product?.tags) ? product.tags : [];
+
+    if (!brandId) return;
+
+    if (!brandTagMap.has(brandId)) {
+      brandTagMap.set(brandId, new Map());
+    }
+
+    const currentBrandTags = brandTagMap.get(brandId);
+
+    productTags.forEach((tag) => {
+      if (tag?.id && !currentBrandTags.has(tag.id)) {
+        currentBrandTags.set(tag.id, {
+          id: tag.id,
+          name: tag.name || "",
+          slug: tag.slug || "",
+        });
+      }
+    });
+  });
+
+  const menuData = brands.map((brand) => {
+    const relatedTagsMap = brandTagMap.get(brand.id);
+    const relatedTags = relatedTagsMap
+      ? Array.from(relatedTagsMap.values()).sort((a, b) =>
+        String(a.name || "").localeCompare(String(b.name || ""))
+      )
+      : [];
+
+    return {
+      id: brand.id,
+      name: brand.name || "",
+      slug: brand.slug || "",
+      logo: brand.logo || null,
+      tags: relatedTags,
+    };
+  });
+
+  return menuData.sort((a, b) =>
+    String(a.name || "").localeCompare(String(b.name || ""))
+  );
+}
+
+/*********************** getAllProductsForMenu ********************************** */
+export async function getAllProductsForMenu() {
+  let allProducts = [];
+  let page = 1;
+  let pageCount = 1;
+
+  while (page <= pageCount) {
+    const productBlockQuery = qs.stringify({
+      sort: ["name"],
+      populate: ["brand", "tags"],
+      pagination: {
+        pageSize: 100,
+        page,
+      },
+    });
+
+    const response = await fetchData("products", productBlockQuery);
+
+    const rows = Array.isArray(response?.data) ? response.data : [];
+    allProducts = [...allProducts, ...rows];
+
+    pageCount = response?.meta?.pagination?.pageCount || 1;
+    page++;
+  }
+
+  return allProducts;
+}
+
+
+
+/********************* getAllProductsReport ***************************/
+export async function getAllProductsReport() {
+  let allProducts = [];
+  let page = 1;
+  let pageCount = 1;
+
+  while (page <= pageCount) {
+    const productBlockQuery = qs.stringify({
+      sort: ["brand.name", "name"],
+      populate: ['image', 'videoLinks', 'brand', 'tags'],
+      pagination: {
+        pageSize: 100,
+        page,
+      },
+    });
+
+    const response = await fetchData("products", productBlockQuery);
+
+    allProducts = [...allProducts, ...(response?.data || [])];
+    pageCount = response?.meta?.pagination?.pageCount || 1;
+    page++;
+  }
+
+  return allProducts;
+}
+
+
+
+
 /***********************getAllBrandsList********************************** */
 export async function getAllBrandsList() {
 
@@ -83,48 +209,77 @@ export async function getAllFilterList() {
 
 
 
-/*********************getProudctListByBrand*************************** */
+/********************* getProudctListByBrand ***************************/
 export async function getProudctListByBrand(brandSlug) {
-  const productBlockQuery = qs.stringify({
-    filters: {
-      brand: {
-        slug: {
-          $eq: brandSlug,
+  let allProducts = [];
+  let page = 1;
+  let pageCount = 1;
+
+  while (page <= pageCount) {
+    const productBlockQuery = qs.stringify({
+      filters: {
+        brand: {
+          slug: {
+            $eq: brandSlug,
+          },
         },
       },
-    },
-    sort: ['price'],
-    populate: ['image', 'videoLinks', 'brand', 'tags'],
-    pagination: {
-      pageSize: 1000,
-      page: 1,
-    },
-  });
-  return await fetchData("products", productBlockQuery);
+      sort: ['price'],
+      populate: ['image', 'videoLinks', 'brand', 'tags'],
+      pagination: {
+        pageSize: 100, // keep reasonable page size
+        page: page,
+      },
+    });
+
+    const response = await fetchData("products", productBlockQuery);
+
+    // Assuming Strapi returns { data: [], meta: { pagination: { page, pageCount } } }
+    allProducts = [...allProducts, ...response.data];
+
+    pageCount = response.meta.pagination.pageCount;
+    page++;
+  }
+
+  return allProducts;
 }
 
 
 
-/*********************getProudctListByFilter*************************** */
+/********************* getProudctListByFilter ***************************/
 export async function getProudctListByFilter(TagSlug) {
-  const productBlockQuery = qs.stringify({
-    filters: {
-      tags: {
-        slug: {
-          $eq: TagSlug,
+  let allProducts = [];
+  let page = 1;
+  let pageCount = 1;
+
+  while (page <= pageCount) {
+    const productBlockQuery = qs.stringify({
+      filters: {
+        tags: {
+          slug: {
+            $eq: TagSlug,
+          },
         },
       },
-    },
-    sort: ['price'],
-    populate: ['image', 'videoLinks', 'brand', 'tags'],
-    pagination: {
-      pageSize: 1000,
-      page: 1,
-    },
-  });
-  return await fetchData("products", productBlockQuery);
-}
+      sort: ['price'],
+      populate: ['image', 'videoLinks', 'brand', 'tags'],
+      pagination: {
+        pageSize: 100, // better keep it reasonable (not 1000)
+        page: page,
+      },
+    });
 
+    const response = await fetchData("products", productBlockQuery);
+
+    // Strapi normally returns { data: [...], meta: { pagination: { page, pageCount } } }
+    allProducts = [...allProducts, ...response.data];
+
+    pageCount = response.meta.pagination.pageCount;
+    page++;
+  }
+
+  return allProducts;
+}
 
 
 /*********************getSpecificBrand*************************** */
@@ -172,15 +327,30 @@ export async function getSpecificFilter(brandSlug) {
 
 
 
-/*********************getAllBrandSlugs*************************** */
+/********************* getAllBrandSlugs ***************************/
 export async function getAllBrandSlugs() {
+  let allBrands = [];
+  let page = 1;
+  let pageCount = 1;
 
-  const blogBlockQuery = qs.stringify({
+  while (page <= pageCount) {
+    const blogBlockQuery = qs.stringify({
+      fields: ["slug"], // Strapi v4 needs array for fields
+      pagination: {
+        pageSize: 100,
+        page: page,
+      },
+    });
 
-    fields: "slug",
+    const response = await fetchData("brands", blogBlockQuery);
 
-  });
-  return await fetchData("brands", blogBlockQuery);
+    allBrands = [...allBrands, ...response.data];
+
+    pageCount = response.meta.pagination.pageCount;
+    page++;
+  }
+
+  return allBrands;
 }
 
 /*********************getAllFiltersSlugs*************************** */
@@ -211,13 +381,28 @@ export async function getSingleProduct(slug) {
 
 
 
-/*********************getAllProductSlugs*************************** */
+/********************* getAllProductSlugs ***************************/
 export async function getAllProductSlugs() {
+  let allProducts = [];
+  let page = 1;
+  let pageCount = 1;
 
-  const BlockQuery = qs.stringify({
+  while (page <= pageCount) {
+    const BlockQuery = qs.stringify({
+      fields: ["slug"], // use array for fields
+      pagination: {
+        pageSize: 100,
+        page: page,
+      },
+    });
 
-    fields: "slug",
+    const response = await fetchData("products", BlockQuery);
 
-  });
-  return await fetchData("products", BlockQuery);
+    allProducts = [...allProducts, ...response.data];
+
+    pageCount = response.meta.pagination.pageCount;
+    page++;
+  }
+
+  return allProducts;
 }

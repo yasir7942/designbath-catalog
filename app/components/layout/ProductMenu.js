@@ -72,7 +72,7 @@ export default function ProductMenu() {
                 <button
                     type="button"
                     onClick={() => setMobileOpen((prev) => !prev)}
-                    className="rounded border px-3 py-1 text-sm text-gray-700 bg-white"
+                    className="rounded border px-4 py-1 text-base text-gray-700 bg-white"
                 >
                     {mobileOpen ? "Close" : "Menu"}
                 </button>
@@ -112,7 +112,7 @@ export default function ProductMenu() {
                                                 prev === brand.id ? null : brand.id
                                             )
                                         }
-                                        className="ml-3 text-sm text-gray-600"
+                                        className="ml-3 text-xl text-gray-600"
                                     >
                                         {isOpen ? "-" : "+"}
                                     </button>
@@ -144,6 +144,17 @@ export default function ProductMenu() {
                             </li>
                         );
                     })}
+
+                    <li key="Mobile-Home" >
+                        <div className="flex items-center justify-between px-4 py-3">
+                            <Link
+                                href={`/product-report`}
+                                className="font-medium text-gray-900"
+                                onClick={() => setMobileOpen(false)}
+                            >
+                                Product Map
+                            </Link> </div> </li>
+
                 </ul>
             </div>
 
@@ -207,6 +218,20 @@ export default function ProductMenu() {
                             </li>
                         );
                     })}
+
+                    <li
+                        key="home"
+                        className="relative overflow-visible"
+                    >
+                        <Link
+                            href={`/product-report`}
+                            className="inline-flex items-center font-medium text-gray-900 hover:text-blue-600 py-2 whitespace-nowrap"
+                        >
+                            Product Map
+                        </Link>
+                    </li>
+
+
                 </ul>
             </div>
         </div>

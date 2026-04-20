@@ -2,17 +2,14 @@ import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
 
-const STRAPI_BASE =
-    process.env.NEXT_PUBLIC_API_BASE_URL
-"";
-
+const STRAPI_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "";
 const API_TOKEN = process.env.API_TOKEN || "";
 
 export async function POST(req) {
     try {
         if (!STRAPI_BASE) {
             return NextResponse.json(
-                { ok: false, error: "Missing STRAPI_BASE_URL in environment." },
+                { ok: false, error: "Missing NEXT_PUBLIC_API_BASE_URL in environment." },
                 { status: 500 }
             );
         }
@@ -25,8 +22,10 @@ export async function POST(req) {
         }
 
         const body = await req.json();
+
         const documentId = String(body?.documentId || "").trim();
-        const price = body?.price;
+        const hasPrice = body?.price !== undefined;
+        const hasStock = body?.stock !== undefined;
 
         if (!documentId) {
             return NextResponse.json(
@@ -35,29 +34,52 @@ export async function POST(req) {
             );
         }
 
-        if (price === undefined || price === null || Number.isNaN(Number(price))) {
+        if (!hasPrice && !hasStock) {
             return NextResponse.json(
-                { ok: false, error: "Valid price is required." },
+                { ok: false, error: "Either price or stock is required." },
                 { status: 400 }
             );
         }
 
-        const res = await fetch(
-            `${STRAPI_BASE}products/${documentId}`,
-            {
-                method: "PUT",
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${API_TOKEN}`,
-                },
-                body: JSON.stringify({
-                    data: {
-                        price: String(price),
-                    },
-                }),
-                cache: "no-store",
+        const updateData = {};
+
+        if (hasPrice) {
+            const numericPrice = Number(body.price);
+
+            if (body.price === null || body.price === "" || Number.isNaN(numericPrice)) {
+                return NextResponse.json(
+                    { ok: false, error: "Valid price is required." },
+                    { status: 400 }
+                );
             }
-        );
+
+            updateData.price = String(numericPrice);
+        }
+
+        if (hasStock) {
+            const numericStock = Number(body.stock);
+
+            if (body.stock === null || body.stock === "" || Number.isNaN(numericStock)) {
+                return NextResponse.json(
+                    { ok: false, error: "Valid stock is required." },
+                    { status: 400 }
+                );
+            }
+
+            updateData.stock = numericStock;
+        }
+
+        const res = await fetch(`${STRAPI_BASE}products/${documentId}`, {
+            method: "PUT",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${API_TOKEN}`,
+            },
+            body: JSON.stringify({
+                data: updateData,
+            }),
+            cache: "no-store",
+        });
 
         const data = await res.json();
 
@@ -68,7 +90,7 @@ export async function POST(req) {
                     error:
                         data?.error?.message ||
                         data?.message ||
-                        "Failed to update product price.",
+                        "Failed to update product.",
                     raw: data,
                 },
                 { status: res.status }
@@ -83,7 +105,7 @@ export async function POST(req) {
             product: updatedProduct,
         });
     } catch (error) {
-        console.error("updatePrice route error:", error);
+        console.error("update product route error:", error);
 
         return NextResponse.json(
             {

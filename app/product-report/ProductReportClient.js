@@ -7,8 +7,7 @@ import { FiSearch, FiCheckCircle, FiLogIn, FiX } from "react-icons/fi";
 import { getImageUrl } from "../libs/helpers";
 import { getAllProductsReport } from "../data/loader";
 
-const STRAPI_BASE =
-    process.env.NEXT_PUBLIC_API_BASE_URL || "";
+const STRAPI_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "";
 
 function formatDateTime(value) {
     if (!value) return "—";
@@ -24,6 +23,45 @@ function formatDateTime(value) {
         minute: "2-digit",
     }).format(date);
 }
+
+function getDiscountedPrice(product) {
+    if (!product) return 0;
+
+    let value = 0;
+
+    if (
+        product.useBrandDiscount &&
+        product?.brand?.discount !== null &&
+        product?.brand?.discount !== undefined &&
+        product?.brand?.discount !== ""
+    ) {
+        const discount = Number(product.brand.discount) / 100;
+        value = (Number(product.price) - Number(product.price) * discount) | 0;
+    } else if (
+        !product.useBrandDiscount &&
+        product?.salePrice !== null &&
+        product?.salePrice !== undefined &&
+        product?.salePrice !== ""
+    ) {
+        if (product?.IsFixValueDiscount) {
+            value = Number(product.price) - Number(product.salePrice);
+        } else {
+            const percentageDiscount = Number(product.salePrice) / 100;
+            value =
+                (Number(product.price) - Number(product.price) * percentageDiscount) | 0;
+        }
+    }
+
+    return value;
+}
+
+const LOGGED_IN_GRID =
+    // "70px 250px 110px 200px 90px 90px 110px 110px 110px 200px 60px";
+    "5% 17.86% 7% 14% 6% 6% 5% 7% 7% 10% 4%";
+
+const LOGGED_OUT_GRID =
+    // "56px 240px 130px 180px 110px 120px";
+    "6.70% 28.71% 15% 21% 13% 14%";
 
 const ProductReportClient = () => {
     const [products, setProducts] = useState([]);
@@ -42,6 +80,7 @@ const ProductReportClient = () => {
     const [loginError, setLoginError] = useState("");
 
     const [editedPrices, setEditedPrices] = useState({});
+    const [editedStock, setEditedStock] = useState({});
     const [savingMap, setSavingMap] = useState({});
     const [savedMap, setSavedMap] = useState({});
 
@@ -60,16 +99,28 @@ const ProductReportClient = () => {
                     setProducts(rows);
 
                     const initialPrices = {};
+                    const initialStock = {};
+
                     rows.forEach((product) => {
                         const key = product.documentId || product.id;
+
                         initialPrices[key] =
                             product?.price !== null &&
                                 product?.price !== undefined &&
                                 product?.price !== ""
                                 ? String(product.price)
                                 : "";
+
+                        initialStock[key] =
+                            product?.stock !== null &&
+                                product?.stock !== undefined &&
+                                product?.stock !== ""
+                                ? String(product.stock)
+                                : "";
                     });
+
                     setEditedPrices(initialPrices);
+                    setEditedStock(initialStock);
                 }
             } catch (err) {
                 console.error("ProductReport Error:", err);
@@ -109,18 +160,23 @@ const ProductReportClient = () => {
         return products.filter((product) => {
             const productName = String(product?.name || "").toLowerCase();
             const brandName = String(product?.brand?.name || "").toLowerCase();
+            const model = String(product?.model || "").toLowerCase();
             const slug = String(product?.slug || "").toLowerCase();
             const stock = String(product?.stock ?? "").toLowerCase();
             const price = String(product?.price ?? "").toLowerCase();
             const salePrice = String(product?.salePrice ?? "").toLowerCase();
             const tagText = Array.isArray(product?.tags)
-                ? product.tags.map((tag) => String(tag?.name || "")).join(" ").toLowerCase()
+                ? product.tags
+                    .map((tag) => String(tag?.name || ""))
+                    .join(" ")
+                    .toLowerCase()
                 : "";
 
             return (
                 productName.includes(q) ||
                 brandName.includes(q) ||
                 slug.includes(q) ||
+                model.includes(q) ||
                 stock.includes(q) ||
                 price.includes(q) ||
                 salePrice.includes(q) ||
@@ -256,21 +312,41 @@ const ProductReportClient = () => {
         }));
     };
 
+    const handleStockChange = (productKey, value) => {
+        setEditedStock((prev) => ({
+            ...prev,
+            [productKey]: value,
+        }));
+
+        setSavedMap((prev) => ({
+            ...prev,
+            [productKey]: false,
+        }));
+    };
+
+    const showSavedTick = (productKey) => {
+        setSavedMap((prev) => ({
+            ...prev,
+            [productKey]: true,
+        }));
+
+        setTimeout(() => {
+            setSavedMap((prev) => ({
+                ...prev,
+                [productKey]: false,
+            }));
+        }, 10000);
+    };
+
     const savePrice = async (product) => {
         const productKey = product.documentId || product.id;
         const rawValue = editedPrices[productKey];
 
         if (rawValue === undefined) return;
-
-        if (String(rawValue).trim() === String(product?.price ?? "").trim()) {
-            return;
-        }
+        if (String(rawValue).trim() === String(product?.price ?? "").trim()) return;
 
         const numericPrice = Number(rawValue);
-
-        if (rawValue === "" || Number.isNaN(numericPrice)) {
-            return;
-        }
+        if (rawValue === "" || Number.isNaN(numericPrice)) return;
 
         try {
             setSavingMap((prev) => ({ ...prev, [productKey]: true }));
@@ -314,20 +390,71 @@ const ProductReportClient = () => {
                 [productKey]: String(numericPrice),
             }));
 
-            setSavedMap((prev) => ({
-                ...prev,
-                [productKey]: true,
-            }));
-
-            setTimeout(() => {
-                setSavedMap((prev) => ({
-                    ...prev,
-                    [productKey]: false,
-                }));
-            }, 10000);
+            showSavedTick(productKey);
         } catch (err) {
             console.error("Save price error:", err);
             alert(err.message || "Failed to update price.");
+        } finally {
+            setSavingMap((prev) => ({ ...prev, [productKey]: false }));
+        }
+    };
+
+    const saveStock = async (product) => {
+        const productKey = product.documentId || product.id;
+        const rawValue = editedStock[productKey];
+
+        if (rawValue === undefined) return;
+        if (String(rawValue).trim() === String(product?.stock ?? "").trim()) return;
+
+        const numericStock = Number(rawValue);
+        if (rawValue === "" || Number.isNaN(numericStock)) return;
+
+        try {
+            setSavingMap((prev) => ({ ...prev, [productKey]: true }));
+
+            const res = await fetch("/api/product/updatePrice", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    documentId: product.documentId,
+                    stock: numericStock,
+                }),
+            });
+
+            const data = await res.json();
+
+            if (!res.ok || !data?.ok) {
+                throw new Error(data?.error || "Failed to update stock.");
+            }
+
+            const updatedAt =
+                data?.updatedAt ||
+                data?.product?.updatedAt ||
+                new Date().toISOString();
+
+            setProducts((prev) =>
+                prev.map((item) => {
+                    if ((item.documentId || item.id) !== productKey) return item;
+
+                    return {
+                        ...item,
+                        stock: numericStock,
+                        updatedAt,
+                    };
+                })
+            );
+
+            setEditedStock((prev) => ({
+                ...prev,
+                [productKey]: String(numericStock),
+            }));
+
+            showSavedTick(productKey);
+        } catch (err) {
+            console.error("Save stock error:", err);
+            alert(err.message || "Failed to update stock.");
         } finally {
             setSavingMap((prev) => ({ ...prev, [productKey]: false }));
         }
@@ -379,8 +506,8 @@ const ProductReportClient = () => {
                         </div>
                     </div>
 
-                    <div className="flex w-full flex-col gap-2 lg:w-auto lg:flex-row lg:items-center ">
-                        <div className="relative w-full   lg:w-[700px] ">
+                    <div className="flex w-full flex-col gap-2 lg:w-auto lg:flex-row lg:items-center">
+                        <div className="relative w-full lg:w-[700px]">
                             <FiSearch className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                             <input
                                 type="text"
@@ -484,270 +611,534 @@ const ProductReportClient = () => {
                                         </div>
 
                                         <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
-                                            <div className="hidden grid-cols-[58px_minmax(220px,1.6fr)_0.9fr_1.1fr_100px_100px_150px_90px_170px_90px] gap-2 border-b border-slate-200 bg-slate-50 px-3 py-3 text-xs font-semibold uppercase tracking-wide text-slate-600 lg:grid">
-                                                <div>Image</div>
-                                                <div>Product</div>
-                                                <div>Brand</div>
-                                                <div>Tags</div>
-                                                <div>Price</div>
-                                                <div>Sale</div>
-                                                <div>Slug</div>
-                                                <div>Stock</div>
-                                                <div>Updated</div>
-                                                <div>Saved</div>
-                                            </div>
+                                            {isLoggedIn ? (
+                                                <>
+                                                    <div
+                                                        className="hidden gap-3 border-b border-slate-200 bg-slate-50 px-3 py-3 text-xs font-semibold uppercase tracking-wide text-slate-600 lg:grid overflow-scroll"
+                                                        style={{ gridTemplateColumns: LOGGED_IN_GRID }}
+                                                    >
+                                                        <div>Image</div>
+                                                        <div>Product</div>
+                                                        <div>Brand</div>
+                                                        <div>Tags</div>
+                                                        <div>List Price</div>
+                                                        <div>Fix Dis. Amt</div>
+                                                        <div>Brand Discount</div>
+                                                        <div>Discount Price</div>
+                                                        <div>Stock</div>
+                                                        <div>Updated</div>
+                                                        <div>Saved</div>
+                                                    </div>
 
-                                            <div className="divide-y divide-slate-200">
-                                                {tagGroup.items.map((product) => {
-                                                    const productKey = product.documentId || product.id;
-                                                    const tagText =
-                                                        Array.isArray(product?.tags) && product.tags.length > 0
-                                                            ? product.tags
-                                                                .map((tag) => String(tag?.name || "").trim())
-                                                                .filter(Boolean)
-                                                                .join(", ")
-                                                            : "—";
+                                                    <div className="divide-y divide-slate-200">
+                                                        {tagGroup.items.map((product) => {
+                                                            const productKey = product.documentId || product.id;
+                                                            const discountedPrice = getDiscountedPrice(product);
+                                                            const tagText =
+                                                                Array.isArray(product?.tags) &&
+                                                                    product.tags.length > 0
+                                                                    ? product.tags
+                                                                        .map((tag) =>
+                                                                            String(tag?.name || "").trim()
+                                                                        )
+                                                                        .filter(Boolean)
+                                                                        .join(", ")
+                                                                    : "—";
 
-                                                    const salePriceText =
-                                                        product?.salePrice !== null &&
-                                                            product?.salePrice !== undefined &&
-                                                            product?.salePrice !== ""
-                                                            ? product.salePrice
-                                                            : "—";
+                                                            const salePriceText =
+                                                                product?.salePrice !== null &&
+                                                                    product?.salePrice !== undefined &&
+                                                                    product?.salePrice !== ""
+                                                                    ? product.salePrice
+                                                                    : "—";
 
-                                                    const stockText =
-                                                        product?.stock !== null &&
-                                                            product?.stock !== undefined &&
-                                                            product?.stock !== ""
-                                                            ? product.stock
-                                                            : "—";
+                                                            const imageSrc = product?.image?.url
+                                                                ? getImageUrl(product.image.url)
+                                                                : null;
 
-                                                    const imageSrc = product?.image?.url
-                                                        ? getImageUrl(product.image.url)
-                                                        : null;
-
-                                                    return (
-                                                        <div
-                                                            key={productKey}
-                                                            className="px-3 py-3 text-sm transition hover:bg-slate-50"
-                                                        >
-                                                            <div className="hidden items-center gap-2 lg:grid lg:grid-cols-[58px_minmax(220px,1.6fr)_0.9fr_1.1fr_100px_100px_150px_90px_170px_90px]">
-                                                                <div className="flex h-[58px] w-[46px] items-center justify-center overflow-hidden rounded bg-gray-100">
-                                                                    {imageSrc ? (
-                                                                        <Image
-                                                                            src={imageSrc}
-                                                                            alt={product?.name || "Product"}
-                                                                            width={92}
-                                                                            height={116}
-                                                                            className="h-full w-full cursor-zoom-in object-contain"
-                                                                            onMouseEnter={() =>
-                                                                                setHoveredImage({
-                                                                                    src: imageSrc,
-                                                                                    alt: product?.name || "Product",
-                                                                                })
-                                                                            }
-                                                                            onMouseLeave={() => setHoveredImage(null)}
-                                                                        />
-                                                                    ) : (
-                                                                        <span className="text-[10px] text-slate-400">
-                                                                            No
-                                                                        </span>
-                                                                    )}
-                                                                </div>
-
-                                                                <div className="min-w-0">
-                                                                    <div className="truncate font-medium text-slate-900">
-                                                                        {product?.name || "Untitled Product"}
-                                                                    </div>
-                                                                </div>
-
-                                                                <div className="truncate text-slate-700">
-                                                                    {product?.brand?.name || "—"}
-                                                                </div>
-
-                                                                <div className="line-clamp-2 text-slate-700">
-                                                                    {tagText}
-                                                                </div>
-
-                                                                <div>
-                                                                    {isLoggedIn ? (
-                                                                        <input
-                                                                            type="number"
-                                                                            step="any"
-                                                                            value={editedPrices[productKey] ?? ""}
-                                                                            onChange={(e) =>
-                                                                                handlePriceChange(productKey, e.target.value)
-                                                                            }
-                                                                            onBlur={() => savePrice(product)}
-                                                                            onKeyDown={(e) => {
-                                                                                if (e.key === "Enter") {
-                                                                                    e.currentTarget.blur();
-                                                                                }
-                                                                            }}
-                                                                            disabled={savingMap[productKey]}
-                                                                            className="w-full rounded border border-slate-300 px-2 py-1 text-sm text-slate-800 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                                                                        />
-                                                                    ) : (
-                                                                        <div className="font-medium text-slate-800">
-                                                                            {product?.price ?? "—"}
-                                                                        </div>
-                                                                    )}
-                                                                </div>
-
-                                                                <div className="font-medium text-green-700">
-                                                                    {salePriceText}
-                                                                </div>
-
-                                                                <div className="break-all text-slate-700">
-                                                                    {product?.slug || "—"}
-                                                                </div>
-
-                                                                <div className="text-slate-700">
-                                                                    {stockText}
-                                                                </div>
-
-                                                                <div className="text-slate-700">
-                                                                    {formatDateTime(product?.updatedAt)}
-                                                                </div>
-
-                                                                <div className="flex justify-center">
-                                                                    {savingMap[productKey] ? (
-                                                                        <span className="text-xs text-slate-500">
-                                                                            Saving...
-                                                                        </span>
-                                                                    ) : savedMap[productKey] ? (
-                                                                        <FiCheckCircle
-                                                                            size={18}
-                                                                            className="text-green-600"
-                                                                        />
-                                                                    ) : (
-                                                                        <span className="text-slate-300">—</span>
-                                                                    )}
-                                                                </div>
-                                                            </div>
-
-                                                            <div className="lg:hidden">
-                                                                <div className="flex gap-3">
-                                                                    <div className="flex h-[74px] w-[58px] shrink-0 items-center justify-center overflow-hidden rounded bg-gray-100">
-                                                                        {imageSrc ? (
-                                                                            <Image
-                                                                                src={imageSrc}
-                                                                                alt={product?.name || "Product"}
-                                                                                width={92}
-                                                                                height={116}
-                                                                                className="h-full w-full object-contain"
-                                                                            />
-                                                                        ) : (
-                                                                            <span className="text-[10px] text-slate-400">
-                                                                                No Image
-                                                                            </span>
-                                                                        )}
-                                                                    </div>
-
-                                                                    <div className="min-w-0 flex-1">
-                                                                        <div className="truncate text-sm font-semibold text-slate-900">
-                                                                            {product?.name || "Untitled Product"}
+                                                            return (
+                                                                <div
+                                                                    key={productKey}
+                                                                    className="px-3 py-3 text-sm transition hover:bg-slate-50"
+                                                                >
+                                                                    <div
+                                                                        className="hidden items-center gap-3 lg:grid"
+                                                                        style={{
+                                                                            gridTemplateColumns: LOGGED_IN_GRID,
+                                                                        }}
+                                                                    >
+                                                                        <div className="flex h-[58px] w-[46px] items-center justify-center overflow-hidden rounded bg-gray-100">
+                                                                            {imageSrc ? (
+                                                                                <Image
+                                                                                    src={imageSrc}
+                                                                                    alt={product?.name || "Product"}
+                                                                                    width={92}
+                                                                                    height={116}
+                                                                                    className="h-full w-full cursor-zoom-in object-contain"
+                                                                                    onMouseEnter={() =>
+                                                                                        setHoveredImage({
+                                                                                            src: imageSrc,
+                                                                                            alt:
+                                                                                                product?.name ||
+                                                                                                "Product",
+                                                                                        })
+                                                                                    }
+                                                                                    onMouseLeave={() =>
+                                                                                        setHoveredImage(null)
+                                                                                    }
+                                                                                />
+                                                                            ) : (
+                                                                                <span className="text-[10px] text-slate-400">
+                                                                                    No
+                                                                                </span>
+                                                                            )}
                                                                         </div>
 
-                                                                        <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
-                                                                            <div>
-                                                                                <span className="font-medium text-slate-500">
-                                                                                    Brand:
-                                                                                </span>{" "}
-                                                                                <span className="text-slate-800">
-                                                                                    {product?.brand?.name || "—"}
-                                                                                </span>
-                                                                            </div>
-
-                                                                            <div>
-                                                                                <span className="font-medium text-slate-500">
-                                                                                    Stock:
-                                                                                </span>{" "}
-                                                                                <span className="text-slate-800">
-                                                                                    {stockText}
-                                                                                </span>
-                                                                            </div>
-
-                                                                            <div>
-                                                                                <span className="font-medium text-slate-500">
-                                                                                    Price:
-                                                                                </span>{" "}
-                                                                                <span className="text-slate-800">
-                                                                                    {product?.price ?? "—"}
-                                                                                </span>
-                                                                            </div>
-
-                                                                            <div>
-                                                                                <span className="font-medium text-slate-500">
-                                                                                    Sale:
-                                                                                </span>{" "}
-                                                                                <span className="text-green-700">
-                                                                                    {salePriceText}
-                                                                                </span>
+                                                                        <div className="min-w-0">
+                                                                            <div className="line-clamp-2 leading-5 font-medium text-slate-900">
+                                                                                {product?.name ||
+                                                                                    "Untitled Product"}
                                                                             </div>
                                                                         </div>
 
-                                                                        <div className="mt-1 line-clamp-2 text-xs text-slate-700">
-                                                                            <span className="font-medium text-slate-500">
-                                                                                Tags:
-                                                                            </span>{" "}
+                                                                        <div className="truncate text-xs text-slate-700">
+                                                                            {product?.brand?.name || "—"}
+                                                                        </div>
+
+                                                                        <div className="line-clamp-2 text-xs leading-4 text-slate-700">
                                                                             {tagText}
                                                                         </div>
 
-                                                                        <div className="mt-1 break-all text-xs text-slate-700">
-                                                                            <span className="font-medium text-slate-500">
-                                                                                Slug:
-                                                                            </span>{" "}
-                                                                            {product?.slug || "—"}
+                                                                        <div>
+                                                                            <input
+                                                                                type="number"
+                                                                                step="any"
+                                                                                value={
+                                                                                    editedPrices[productKey] ?? ""
+                                                                                }
+                                                                                onChange={(e) =>
+                                                                                    handlePriceChange(
+                                                                                        productKey,
+                                                                                        e.target.value
+                                                                                    )
+                                                                                }
+                                                                                onBlur={() => savePrice(product)}
+                                                                                onKeyDown={(e) => {
+                                                                                    if (e.key === "Enter") {
+                                                                                        e.currentTarget.blur();
+                                                                                    }
+                                                                                }}
+                                                                                disabled={savingMap[productKey]}
+                                                                                className="w-full rounded border border-slate-300 px-2 py-1 text-sm text-slate-800 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                                                                            />
                                                                         </div>
 
-                                                                        <div className="mt-1 text-xs text-slate-700">
-                                                                            <span className="font-medium text-slate-500">
-                                                                                Updated:
-                                                                            </span>{" "}
+                                                                        <div className="text-sm font-medium text-green-700">
+                                                                            {salePriceText}
+                                                                        </div>
+
+                                                                        <div className="text-xs text-slate-700">
+                                                                            {product?.useBrandDiscount === true &&
+                                                                                product?.brand?.discount !== null &&
+                                                                                product?.brand?.discount !== undefined
+                                                                                ? `${product.brand.discount}%`
+                                                                                : "No"}
+                                                                        </div>
+
+                                                                        <div className="text-sm text-slate-700">
+                                                                            {discountedPrice > 0
+                                                                                ? `${discountedPrice}/-`
+                                                                                : "--"}
+                                                                        </div>
+
+                                                                        <div>
+                                                                            <input
+                                                                                type="number"
+                                                                                step="any"
+                                                                                value={
+                                                                                    editedStock[productKey] ?? ""
+                                                                                }
+                                                                                placeholder="0"
+                                                                                onChange={(e) =>
+                                                                                    handleStockChange(
+                                                                                        productKey,
+                                                                                        e.target.value
+                                                                                    )
+                                                                                }
+                                                                                onBlur={() => saveStock(product)}
+                                                                                onKeyDown={(e) => {
+                                                                                    if (e.key === "Enter") {
+                                                                                        e.currentTarget.blur();
+                                                                                    }
+                                                                                }}
+                                                                                disabled={savingMap[productKey]}
+                                                                                className="w-full rounded border border-slate-300 px-2 py-1 text-sm text-slate-800 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                                                                            />
+                                                                        </div>
+
+                                                                        <div className="text-xs leading-4 text-slate-700">
                                                                             {formatDateTime(product?.updatedAt)}
                                                                         </div>
-                                                                    </div>
-                                                                </div>
 
-                                                                {isLoggedIn ? (
-                                                                    <div className="mt-3 flex items-center gap-2">
-                                                                        <input
-                                                                            type="number"
-                                                                            step="any"
-                                                                            value={editedPrices[productKey] ?? ""}
-                                                                            onChange={(e) =>
-                                                                                handlePriceChange(productKey, e.target.value)
-                                                                            }
-                                                                            onBlur={() => savePrice(product)}
-                                                                            onKeyDown={(e) => {
-                                                                                if (e.key === "Enter") {
-                                                                                    e.currentTarget.blur();
-                                                                                }
-                                                                            }}
-                                                                            disabled={savingMap[productKey]}
-                                                                            className="w-full rounded border border-slate-300 px-2 py-2 text-sm text-slate-800 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                                                                        />
-
-                                                                        <div className="w-[28px] text-center">
+                                                                        <div className="flex justify-center">
                                                                             {savingMap[productKey] ? (
                                                                                 <span className="text-xs text-slate-500">
-                                                                                    ...
+                                                                                    Saving...
                                                                                 </span>
                                                                             ) : savedMap[productKey] ? (
                                                                                 <FiCheckCircle
                                                                                     size={18}
-                                                                                    className="mx-auto text-green-600"
+                                                                                    className="text-green-600"
                                                                                 />
-                                                                            ) : null}
+                                                                            ) : (
+                                                                                <span className="text-slate-300">
+                                                                                    —
+                                                                                </span>
+                                                                            )}
                                                                         </div>
                                                                     </div>
-                                                                ) : null}
-                                                            </div>
-                                                        </div>
-                                                    );
-                                                })}
-                                            </div>
+
+                                                                    <div className="lg:hidden">
+                                                                        <div className="flex gap-3">
+                                                                            <div className="flex h-[74px] w-[58px] shrink-0 items-center justify-center overflow-hidden rounded bg-gray-100">
+                                                                                {imageSrc ? (
+                                                                                    <Image
+                                                                                        src={imageSrc}
+                                                                                        alt={
+                                                                                            product?.name || "Product"
+                                                                                        }
+                                                                                        width={92}
+                                                                                        height={116}
+                                                                                        className="h-full w-full object-contain"
+                                                                                    />
+                                                                                ) : (
+                                                                                    <span className="text-[10px] text-slate-400">
+                                                                                        No Image
+                                                                                    </span>
+                                                                                )}
+                                                                            </div>
+
+                                                                            <div className="min-w-0 flex-1">
+                                                                                <div className="truncate text-sm font-semibold text-slate-900">
+                                                                                    {product?.name ||
+                                                                                        "Untitled Product"}
+                                                                                </div>
+
+                                                                                <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
+                                                                                    <div>
+                                                                                        <span className="font-medium text-slate-500">
+                                                                                            Stock:
+                                                                                        </span>{" "}
+                                                                                        <span className="text-slate-800">
+                                                                                            {product?.stock ?? "—"}
+                                                                                        </span>
+                                                                                    </div>
+
+                                                                                    <div>
+                                                                                        <span className="font-medium text-slate-500">
+                                                                                            Price:
+                                                                                        </span>{" "}
+                                                                                        <span className="text-slate-800">
+                                                                                            {product?.price ?? "—"}
+                                                                                        </span>
+                                                                                    </div>
+
+                                                                                    {discountedPrice > 0 && (
+                                                                                        <div>
+                                                                                            <span className="text-slate-700 font-semibold">
+                                                                                                Discount Price:
+                                                                                            </span>{" "}
+                                                                                            <span className="text-slate-900 font-semibold">
+                                                                                                {discountedPrice}/-
+                                                                                            </span>
+                                                                                        </div>
+                                                                                    )}
+
+                                                                                    <div>
+                                                                                        <span className="font-medium text-slate-500">
+                                                                                            Brand:
+                                                                                        </span>{" "}
+                                                                                        <span className="text-slate-800">
+                                                                                            {product?.brand?.name || "—"}
+                                                                                        </span>
+                                                                                    </div>
+
+                                                                                    <div>
+                                                                                        <span className="font-medium text-slate-500">
+                                                                                            Fix/% Dis. Amt:
+                                                                                        </span>{" "}
+                                                                                        <span className="text-green-700">
+                                                                                            {salePriceText}
+                                                                                        </span>
+                                                                                    </div>
+                                                                                </div>
+
+                                                                                <div className="mt-1 line-clamp-2 text-xs text-slate-700">
+                                                                                    <span className="font-medium text-slate-500">
+                                                                                        Tags:
+                                                                                    </span>{" "}
+                                                                                    {tagText}
+                                                                                </div>
+
+                                                                                <div className="mt-1 text-xs text-slate-700">
+                                                                                    <span className="font-medium text-slate-500">
+                                                                                        Updated:
+                                                                                    </span>{" "}
+                                                                                    {formatDateTime(product?.updatedAt)}
+                                                                                </div>
+                                                                            </div>
+                                                                        </div>
+
+                                                                        <div className="mt-3 flex items-center gap-2">
+                                                                            <input
+                                                                                type="number"
+                                                                                step="any"
+                                                                                value={
+                                                                                    editedPrices[productKey] ?? ""
+                                                                                }
+                                                                                onChange={(e) =>
+                                                                                    handlePriceChange(
+                                                                                        productKey,
+                                                                                        e.target.value
+                                                                                    )
+                                                                                }
+                                                                                onBlur={() => savePrice(product)}
+                                                                                onKeyDown={(e) => {
+                                                                                    if (e.key === "Enter") {
+                                                                                        e.currentTarget.blur();
+                                                                                    }
+                                                                                }}
+                                                                                disabled={savingMap[productKey]}
+                                                                                className="w-full rounded border border-slate-300 px-2 py-2 text-sm text-slate-800 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                                                                                placeholder="Price"
+                                                                            />
+
+                                                                            <div className="w-[28px] text-center">
+                                                                                {savingMap[productKey] ? (
+                                                                                    <span className="text-xs text-slate-500">
+                                                                                        ...
+                                                                                    </span>
+                                                                                ) : savedMap[productKey] ? (
+                                                                                    <FiCheckCircle
+                                                                                        size={18}
+                                                                                        className="mx-auto text-green-600"
+                                                                                    />
+                                                                                ) : null}
+                                                                            </div>
+                                                                        </div>
+
+                                                                        <div className="mt-3 flex items-center gap-2">
+                                                                            <input
+                                                                                type="number"
+                                                                                step="any"
+                                                                                value={
+                                                                                    editedStock[productKey] ?? ""
+                                                                                }
+                                                                                onChange={(e) =>
+                                                                                    handleStockChange(
+                                                                                        productKey,
+                                                                                        e.target.value
+                                                                                    )
+                                                                                }
+                                                                                onBlur={() => saveStock(product)}
+                                                                                onKeyDown={(e) => {
+                                                                                    if (e.key === "Enter") {
+                                                                                        e.currentTarget.blur();
+                                                                                    }
+                                                                                }}
+                                                                                disabled={savingMap[productKey]}
+                                                                                className="w-full rounded border border-slate-300 px-2 py-2 text-sm text-slate-800 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                                                                                placeholder="Stock"
+                                                                            />
+
+                                                                            <div className="w-[28px] text-center">
+                                                                                {savingMap[productKey] ? (
+                                                                                    <span className="text-xs text-slate-500">
+                                                                                        ...
+                                                                                    </span>
+                                                                                ) : savedMap[productKey] ? (
+                                                                                    <FiCheckCircle
+                                                                                        size={18}
+                                                                                        className="mx-auto text-green-600"
+                                                                                    />
+                                                                                ) : null}
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <div
+                                                        className="hidden gap-3 border-b border-slate-200 bg-slate-50 px-3 py-3 text-xs font-semibold uppercase tracking-wide text-slate-600 lg:grid"
+                                                        style={{ gridTemplateColumns: LOGGED_OUT_GRID }}
+                                                    >
+                                                        <div>Image</div>
+                                                        <div>Product</div>
+                                                        <div>Brand</div>
+                                                        <div>Tags</div>
+                                                        <div>Price</div>
+                                                        <div>Discount Price</div>
+                                                    </div>
+
+                                                    <div className="divide-y divide-slate-200">
+                                                        {tagGroup.items.map((product) => {
+                                                            const productKey = product.documentId || product.id;
+                                                            const discountedPrice = getDiscountedPrice(product);
+                                                            const tagText =
+                                                                Array.isArray(product?.tags) &&
+                                                                    product.tags.length > 0
+                                                                    ? product.tags
+                                                                        .map((tag) =>
+                                                                            String(tag?.name || "").trim()
+                                                                        )
+                                                                        .filter(Boolean)
+                                                                        .join(", ")
+                                                                    : "—";
+
+                                                            const imageSrc = product?.image?.url
+                                                                ? getImageUrl(product.image.url)
+                                                                : null;
+
+                                                            return (
+                                                                <div
+                                                                    key={productKey}
+                                                                    className="px-3 py-3 text-sm transition hover:bg-slate-50"
+                                                                >
+                                                                    <div
+                                                                        className="hidden items-center gap-3 lg:grid"
+                                                                        style={{
+                                                                            gridTemplateColumns: LOGGED_OUT_GRID,
+                                                                        }}
+                                                                    >
+                                                                        <div className="flex h-[58px] w-[46px] items-center justify-center overflow-hidden rounded bg-gray-100">
+                                                                            {imageSrc ? (
+                                                                                <Image
+                                                                                    src={imageSrc}
+                                                                                    alt={product?.name || "Product"}
+                                                                                    width={92}
+                                                                                    height={116}
+                                                                                    className="h-full w-full cursor-zoom-in object-contain"
+                                                                                    onMouseEnter={() =>
+                                                                                        setHoveredImage({
+                                                                                            src: imageSrc,
+                                                                                            alt:
+                                                                                                product?.name ||
+                                                                                                "Product",
+                                                                                        })
+                                                                                    }
+                                                                                    onMouseLeave={() =>
+                                                                                        setHoveredImage(null)
+                                                                                    }
+                                                                                />
+                                                                            ) : (
+                                                                                <span className="text-[10px] text-slate-400">
+                                                                                    No
+                                                                                </span>
+                                                                            )}
+                                                                        </div>
+
+                                                                        <div className="min-w-0">
+                                                                            <div className="line-clamp-2 leading-5 font-medium text-slate-900">
+                                                                                {product?.name ||
+                                                                                    "Untitled Product"}
+                                                                            </div>
+                                                                        </div>
+
+                                                                        <div className="truncate text-xs text-slate-700">
+                                                                            {product?.brand?.name || "—"}
+                                                                        </div>
+
+                                                                        <div className="line-clamp-2 text-xs leading-4 text-slate-700">
+                                                                            {tagText}
+                                                                        </div>
+
+                                                                        <div className="font-medium text-slate-800">
+                                                                            {product?.price ?? "—"}
+                                                                        </div>
+
+                                                                        <div className="text-sm text-slate-700">
+                                                                            {discountedPrice > 0
+                                                                                ? `${discountedPrice}/-`
+                                                                                : `${product?.price ?? "—"}/-`}
+                                                                        </div>
+                                                                    </div>
+
+                                                                    <div className="lg:hidden">
+                                                                        <div className="flex gap-3">
+                                                                            <div className="flex h-[74px] w-[58px] shrink-0 items-center justify-center overflow-hidden rounded bg-gray-100">
+                                                                                {imageSrc ? (
+                                                                                    <Image
+                                                                                        src={imageSrc}
+                                                                                        alt={
+                                                                                            product?.name || "Product"
+                                                                                        }
+                                                                                        width={92}
+                                                                                        height={116}
+                                                                                        className="h-full w-full object-contain"
+                                                                                    />
+                                                                                ) : (
+                                                                                    <span className="text-[10px] text-slate-400">
+                                                                                        No Image
+                                                                                    </span>
+                                                                                )}
+                                                                            </div>
+
+                                                                            <div className="min-w-0 flex-1">
+                                                                                <div className="truncate text-sm font-semibold text-slate-900">
+                                                                                    {product?.name ||
+                                                                                        "Untitled Product"}
+                                                                                </div>
+
+                                                                                <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
+                                                                                    <div>
+                                                                                        <span className="font-medium text-slate-500">
+                                                                                            Price:
+                                                                                        </span>{" "}
+                                                                                        <span className="text-slate-800">
+                                                                                            {product?.price ?? "—"}
+                                                                                        </span>
+                                                                                    </div>
+
+                                                                                    {discountedPrice > 0 && (
+                                                                                        <div>
+                                                                                            <span className="text-slate-700 font-semibold">
+                                                                                                Discount Price:
+                                                                                            </span>{" "}
+                                                                                            <span className="text-slate-900 font-semibold">
+                                                                                                {discountedPrice}/-
+                                                                                            </span>
+                                                                                        </div>
+                                                                                    )}
+
+                                                                                    <div>
+                                                                                        <span className="font-medium text-slate-500">
+                                                                                            Brand:
+                                                                                        </span>{" "}
+                                                                                        <span className="text-slate-800">
+                                                                                            {product?.brand?.name || "—"}
+                                                                                        </span>
+                                                                                    </div>
+                                                                                </div>
+
+                                                                                <div className="mt-1 line-clamp-2 text-xs text-slate-700">
+                                                                                    <span className="font-medium text-slate-500">
+                                                                                        Tags:
+                                                                                    </span>{" "}
+                                                                                    {tagText}
+                                                                                </div>
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                </>
+                                            )}
                                         </div>
                                     </div>
                                 ))}
@@ -762,7 +1153,7 @@ const ProductReportClient = () => {
                     <div className="w-full max-w-md rounded-2xl bg-white p-5 shadow-2xl">
                         <div className="mb-4 flex items-center justify-between">
                             <h2 className="text-lg font-semibold text-blue-900">
-                                Login to Edit Prices
+                                Login to Edit Prices / Stock
                             </h2>
                             <button
                                 type="button"

@@ -2,8 +2,8 @@ import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
 
-const STRAPI_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "";
-const API_TOKEN = process.env.API_TOKEN || "";
+const STRAPI_BASE = (process.env.NEXT_PUBLIC_API_BASE_URL || "").trim().replace(/\/+$/, "");
+const API_TOKEN = (process.env.API_TOKEN || "").trim();
 
 export async function POST(req) {
     try {
@@ -69,7 +69,7 @@ export async function POST(req) {
             updateData.stock = numericStock;
         }
 
-        const res = await fetch(`${STRAPI_BASE}products/${documentId}`, {
+        const res = await fetch(`${STRAPI_BASE}/products/${documentId}`, {
             method: "PUT",
             headers: {
                 "Content-Type": "application/json",
@@ -81,12 +81,20 @@ export async function POST(req) {
             cache: "no-store",
         });
 
-        const data = await res.json();
+        const text = await res.text();
+        let data = null;
+
+        try {
+            data = text ? JSON.parse(text) : null;
+        } catch {
+            data = { rawText: text };
+        }
 
         if (!res.ok) {
             return NextResponse.json(
                 {
                     ok: false,
+                    status: res.status,
                     error:
                         data?.error?.message ||
                         data?.message ||
@@ -97,7 +105,7 @@ export async function POST(req) {
             );
         }
 
-        const updatedProduct = data?.data || null;
+        const updatedProduct = data?.data || data || null;
 
         return NextResponse.json({
             ok: true,
